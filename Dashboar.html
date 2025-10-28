@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Dashboard Penjualan</title>
+
+<!-- Fonts & icons -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root{
+    --accent1: #007BFF; /* primary blue */
+    --accent2: #0056d6; /* darker blue accent */
+    --bg-1: #061223;
+    --bg-2: #071833;
+    --muted: #9aa6bf;
+    --card-bg: rgba(255,255,255,0.02);
+    --glass-border: rgba(255,255,255,0.06);
+    --text: #ffffff; /* default dark-mode text = white */
+    --surface: rgba(255,255,255,0.02);
+  }
+
+  /* Light mode overrides */
+  body.light-mode {
+    --bg-1:#f6f8fb;
+    --bg-2:#eef3fb;
+    --card-bg:rgba(2,6,23,0.02);
+    --glass-border: rgba(2,6,23,0.06);
+    --text:#0b1724;
+    --muted:#40546b;
+    --surface: rgba(11,23,36,0.02);
+  }
+
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Poppins',sans-serif;
+    color:var(--text);
+    background: radial-gradient(1200px 500px at 10% 10%, rgba(0,123,255,0.06), transparent),
+                radial-gradient(1000px 400px at 90% 90%, rgba(0,86,214,0.04), transparent),
+                linear-gradient(180deg,var(--bg-1) 0%, var(--bg-2) 100%);
+    padding:18px;
+    -webkit-font-smoothing:antialiased;
+    overflow-y:auto;
+  }
+
+  /* Header */
+  header.app-header{
+    display:flex; gap:16px; align-items:center; justify-content:space-between; margin-bottom:18px;
+    opacity:0; transform: translateY(-8px); animation:fadeSlideIn .6s .05s forwards;
+  }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .logo {
+    width:56px; height:56px; border-radius:10px;
+    background: linear-gradient(135deg,var(--accent1),var(--accent2));
+    display:flex; align-items:center; justify-content:center; box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+    overflow:hidden; cursor:pointer;
+  }
+  .logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .title h1{ margin:0; font-size:18px; font-weight:700; color:var(--text); }
+  .title p{ margin:0; font-size:12px; color:var(--muted); }
+
+  .controls { display:flex; gap:12px; align-items:center; }
+
+  .search {
+    display:flex; align-items:center; gap:10px;
+    background: var(--surface);
+    padding:8px 12px; border-radius:10px; border:1px solid var(--glass-border);
+    min-width:240px;
+  }
+  .search input{ background:transparent; border:0; color:var(--text); outline:none; width:100%; font-size:14px; }
+
+  .btn { padding:9px 14px; border-radius:10px; border:0; cursor:pointer; font-weight:600; }
+  .btn-ghost { background:transparent; border:1px solid rgba(255,255,255,0.05); color:var(--text); }
+  .btn-primary { background: linear-gradient(90deg,var(--accent1),var(--accent2)); color:white; }
+  .small { padding:8px 10px; font-size:13px; }
+
+  /* Layout */
+  .layout { display:grid; grid-template-columns: 1fr 360px; gap:18px; align-items:start; }
+  .main { display:flex; flex-direction:column; gap:16px; }
+
+  /* Cards */
+  .cards { display:grid; grid-template-columns: repeat(3,1fr); gap:12px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:12px; padding:14px; border:1px solid var(--glass-border); backdrop-filter: blur(6px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+    opacity:0; transform:translateY(10px); animation:fadeSlideIn .6s forwards;
+    color:var(--text); /* ensure card text follows var */
+  }
+  .card[data-delay="1"]{ animation-delay:.08s; }
+  .card[data-delay="2"]{ animation-delay:.14s; }
+  .card h3{ margin:0; color:var(--muted); font-size:13px; }
+  .card .value{ margin-top:8px; font-size:20px; font-weight:700; color:var(--text); }
+
+  .table-wrap { background: var(--card-bg); border-radius:12px; padding:12px; border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,0.18); opacity:0; transform: translateY(10px); animation:fadeSlideIn .6s .12s forwards; color:var(--text); }
+  .table-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+  .filters { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .filters select { background:transparent; color:inherit; border:1px solid rgba(255,255,255,0.04); padding:8px 10px; border-radius:8px; color:var(--text); }
+
+  table { width:100%; border-collapse:collapse; min-width:720px; color:var(--text); }
+  thead th { text-align:left; padding:10px 12px; font-size:12px; color:var(--muted); border-bottom:1px solid rgba(255,255,255,0.04); position:sticky; top:0; background: linear-gradient(180deg, rgba(8,10,20,0.55), rgba(8,10,20,0.45)); }
+  tbody td { padding:10px 12px; font-size:14px; color:var(--text); border-bottom:1px dashed rgba(255,255,255,0.03); }
+  tr:hover td{ background: linear-gradient(90deg, rgba(255,255,255,0.02), transparent); }
+
+  /* Sidebar */
+  .sidebar { display:flex; flex-direction:column; gap:12px; opacity:0; transform:translateY(10px); animation:fadeSlideIn .6s .16s forwards; }
+  .panel { border-radius:12px; padding:12px; border:1px solid var(--glass-border); background:var(--card-bg); box-shadow:0 10px 30px rgba(0,0,0,0.18); color:var(--text); }
+
+  .summary-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:10px; }
+  .summary-item { padding:10px; border-radius:10px; background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); text-align:center; color:var(--text); }
+  .summary-item h4{ margin:0; font-size:13px; color:var(--muted); }
+  .summary-item p{ margin:6px 0 0; font-weight:700; font-size:16px; color:var(--text); }
+
+  .chart-card { height:220px; display:flex; align-items:center; justify-content:center; }
+
+  .footer-note { font-size:12px; color:var(--muted); text-align:center; margin-top:8px; }
+
+  /* Palette panel */
+  #palettePanel { display:none; position:fixed; right:18px; top:86px; z-index:9999; width:300px; }
+  .palette-btn { padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); cursor:pointer; background:transparent; color:var(--text); }
+  input[type="color"] { border:0; padding:0; width:36px; height:28px; border-radius:6px; }
+
+  @keyframes fadeSlideIn { to { opacity:1; transform:translateY(0); } }
+
+  /* Responsive */
+  @media (max-width:1100px){ .layout{ grid-template-columns: 1fr; } .cards{ grid-template-columns: repeat(2,1fr); } table{ min-width:600px; } }
+  @media (max-width:640px){ .cards{ grid-template-columns: 1fr; } .search{ min-width:120px; } table{ font-size:13px; min-width:480px; } }
+
+</style>
+</head>
+<body>
+
+<header class="app-header" id="headerArea">
+  <div class="brand">
+    <div class="logo" id="logoWrapper" title="Klik untuk upload logo (tersimpan otomatis)">
+      <i class="fa-solid fa-chart-line" style="color:white; font-size:20px;"></i>
+    </div>
+    <div class="title">
+      <h1 id="appTitle">Dashboard Penjualan</h1>
+      <p id="smallDate">—</p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="search" title="Pencarian cepat (Sales / Prinsipal / Bulan)">
+      <i class="fa-solid fa-magnifying-glass" style="color:var(--muted)"></i>
+      <input id="quickSearch" placeholder="Cari sales, prinsipal, atau bulan..." />
+      <button class="btn btn-ghost small" id="clearSearch">Clear</button>
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center;">
+  <button class="btn btn-ghost small" id="themeToggle" title="Light / Dark toggle">
+    <i id="themeIcon" class="fa-solid fa-sun"></i>
+  </button>
+  <button class="btn btn-ghost small" id="openPalette">Palet</button>
+  <button class="btn btn-primary small" id="exportExcel">
+    <i class="fa-regular fa-file-excel"></i>&nbsp;Excel
+  </button>
+  <button class="btn btn-primary small" id="exportPdf">
+    <i class="fa-regular fa-file-pdf"></i>&nbsp;PDF
+  </button>
+  <!-- TOMBOL BACK (dipindahkan ke kanan PDF) -->
+  <button class="btn btn-ghost small" id="backButton" title="Kembali ke halaman sebelumnya">
+    <i class="fa-solid fa-arrow-left"></i>&nbsp;Back
+  </button>
+</div>
+
+</header>
+
+<input type="file" accept="image/*" id="logoUploader" style="display:none" />
+
+<div id="palettePanel">
+  <div class="panel">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <strong>Palet Warna</strong>
+      <button id="closePalette" class="btn btn-ghost small">Tutup</button>
+    </div>
+    <p style="color:var(--muted); margin:8px 0 6px 0; font-size:13px;">Preset / kustom:</p>
+    <div style="display:flex; gap:8px; margin-bottom:8px;">
+      <button class="palette-btn" data-preset="default">Biru (default)</button>
+      <button class="palette-btn" data-preset="cerah">Cerah</button>
+      <button class="palette-btn" data-preset="green">Hijau</button>
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+      <label style="font-size:13px; color:var(--muted)">Accent 1</label>
+      <input type="color" id="accent1Picker" value="#007BFF" />
+      <label style="font-size:13px; color:var(--muted)">Accent 2</label>
+      <input type="color" id="accent2Picker" value="#0056d6" />
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="applyCustom" class="btn btn-primary small">Apply</button>
+    </div>
+  </div>
+</div>
+
+<section class="layout" id="captureArea">
+  <div class="main">
+    <div class="cards">
+      <div class="card" data-delay="0">
+        <h3>Total Penjualan</h3>
+        <div class="value" id="totalPenjualan">Rp0</div>
+      </div>
+      <div class="card" data-delay="1">
+        <h3>Jumlah Sales</h3>
+        <div class="value" id="totalSales">0</div>
+      </div>
+      <div class="card" data-delay="2">
+        <h3>Jumlah Prinsipal</h3>
+        <div class="value" id="totalPrinsipal">0</div>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="tablePanel">
+      <div class="table-actions">
+        <div class="filters">
+          <select id="filterBulan"><option value="">Semua Bulan</option></select>
+          <select id="filterPrinsipal"><option value="">Semua Prinsipal</option></select>
+          <select id="filterSales"><option value="">Semua Sales</option></select>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-ghost small" id="refreshBtn"><i class="fa-solid fa-arrows-rotate"></i>&nbsp;Refresh</button>
+          <button class="btn btn-ghost small" id="toggleSummary"><i class="fa-solid fa-list"></i>&nbsp;Toggle Summary</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto;">
+        <table id="dashboardTable" aria-describedby="table-caption">
+          <thead>
+            <tr>
+              <th>No</th><th>Sales</th><th>Bulan</th><th>Prinsipal</th><th style="text-align:right">Penjualan</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer-note">Tip: gunakan kotak pencarian untuk menemukan baris lebih cepat.</div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel">
+      <h3 style="margin:0 0 8px 0; color:var(--text);">Ringkasan Total</h3>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div class="panel chart-card">
+      <canvas id="chartPenjualan" style="width:100%; height:100%"></canvas>
+    </div>
+
+    <div class="panel chart-card">
+      <canvas id="chartSales" style="width:100%; height:100%"></canvas>
+    </div>
+  </aside>
+</section>
+
+<script>
+/* ========= Config & elements ========= */
+const SHEET_URL = `https://sheets.googleapis.com/v4/spreadsheets/1sIBT9kdkvZvW3ULIMOARDAFXuXQxLRbpFASVaLromPw/values/Data?key=AIzaSyBWHJnEPSkzvDrECNzZBu-KYPGvOX-rRu0`;
+
+const tbody = document.querySelector('#dashboardTable tbody');
+const filterBulan = document.getElementById('filterBulan');
+const filterPrinsipal = document.getElementById('filterPrinsipal');
+const filterSales = document.getElementById('filterSales');
+
+const totalPenjualanEl = document.getElementById('totalPenjualan');
+const totalSalesEl = document.getElementById('totalSales');
+const totalPrinsipalEl = document.getElementById('totalPrinsipal');
+const summaryGrid = document.getElementById('summaryGrid');
+
+const quickSearch = document.getElementById('quickSearch');
+const clearSearch = document.getElementById('clearSearch');
+const exportExcelBtn = document.getElementById('exportExcel');
+const exportPdfBtn = document.getElementById('exportPdf');
+const refreshBtn = document.getElementById('refreshBtn');
+const toggleSummaryBtn = document.getElementById('toggleSummary');
+
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon = document.getElementById('themeIcon');
+const logoWrapper = document.getElementById('logoWrapper');
+const logoUploader = document.getElementById('logoUploader');
+
+const openPalette = document.getElementById('openPalette');
+const palettePanel = document.getElementById('palettePanel');
+const closePalette = document.getElementById('closePalette');
+const paletteBtns = document.querySelectorAll('.palette-btn');
+const accent1Picker = document.getElementById('accent1Picker');
+const accent2Picker = document.getElementById('accent2Picker');
+const applyCustom = document.getElementById('applyCustom');
+
+let dataAll = [];
+let filtered = [];
+let chart, chartSales;
+
+/* Currency format (no decimal) */
+const formatRupiah = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+
+/* Helpers */
+function debounce(fn, wait=200){ let t; return function(...a){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,a), wait); }; }
+function escapeHtml(str){ if(typeof str !== 'string') return str; return str.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+/* ========= Theme (persist in localStorage) ========= */
+function applyTheme(theme){
+  if(theme === 'light'){
+    document.body.classList.add('light-mode');
+    themeIcon.className = 'fa-solid fa-moon';
+  }else{
+    document.body.classList.remove('light-mode');
+    themeIcon.className = 'fa-solid fa-sun';
+  }
+  // re-render charts to pick up colours / contrast
+  if(dataAll.length) renderCharts(filtered.length?filtered:dataAll);
+  localStorage.setItem('dashboardTheme', theme);
+}
+// initialise theme from localStorage (default 'dark')
+(function initTheme(){
+  const stored = localStorage.getItem('dashboardTheme') || 'dark';
+  applyTheme(stored);
+})();
+
+themeToggle.addEventListener('click', ()=>{
+  const isLight = document.body.classList.contains('light-mode');
+  applyTheme(isLight ? 'dark' : 'light');
+});
+
+/* ========= Load data from Google Sheets ========= */
+async function loadData(){
+  try {
+    const res = await fetch(SHEET_URL);
+    const json = await res.json();
+    if(!json.values || json.values.length < 2){
+      tbody.innerHTML = '<tr><td colspan="5">Tidak ada data</td></tr>';
+      return;
+    }
+    const [header,...rows] = json.values;
+    dataAll = rows.map(row=>{
+      const obj={};
+      header.forEach((h,i)=>obj[h]=row[i]||'');
+      obj.Penjualan = Number(obj.Penjualan) || 0;
+      return obj;
+    });
+    populateFilters(dataAll);
+    applyFilters(); // initial render
+    updateHeaderDate();
+    loadStoredLogo(); // load saved logo after data load
+  } catch(err){
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="5">Gagal mengambil data</td></tr>';
+  }
+}
+
+/* ========= Populate UI ========= */
+function populateFilters(data){
+  const bulan = Array.from(new Set(data.map(d=>d.Bulan))).sort();
+  const prinsipal = Array.from(new Set(data.map(d=>d.Prinsipal))).sort();
+  const sales = Array.from(new Set(data.map(d=>d.Sales))).sort();
+
+  [filterBulan, filterPrinsipal, filterSales].forEach(sel=>{
+    sel.querySelectorAll('option:not([value=""])')?.forEach(o=>o.remove());
+  });
+
+  bulan.forEach(b=>filterBulan.appendChild(new Option(b,b)));
+  prinsipal.forEach(p=>filterPrinsipal.appendChild(new Option(p,p)));
+  sales.forEach(s=>filterSales.appendChild(new Option(s,s)));
+}
+
+function updateCards(data){
+  const total = data.reduce((s,d)=>s+d.Penjualan,0);
+  totalPenjualanEl.textContent = formatRupiah(total);
+  totalSalesEl.textContent = new Set(data.map(d=>d.Sales)).size;
+  totalPrinsipalEl.textContent = new Set(data.map(d=>d.Prinsipal)).size;
+}
+
+function renderTable(data){
+  tbody.innerHTML = '';
+  if(!data.length){ tbody.innerHTML = '<tr><td colspan="5">Tidak ada data</td></tr>'; return; }
+  data.forEach((r, idx)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.No || (idx+1)}</td>
+      <td>${escapeHtml(r.Sales)}</td>
+      <td>${escapeHtml(r.Bulan)}</td>
+      <td>${escapeHtml(r.Prinsipal)}</td>
+      <td style="text-align:right">${formatRupiah(r.Penjualan)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSummary(data){
+  summaryGrid.innerHTML = '';
+  const bySales = {}; const byPrinsipal = {};
+  data.forEach(d=>{ bySales[d.Sales] = (bySales[d.Sales]||0)+d.Penjualan; byPrinsipal[d.Prinsipal] = (byPrinsipal[d.Prinsipal]||0)+d.Penjualan; });
+
+  const topSales = Object.entries(bySales).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  topSales.forEach(([name,total])=>{
+    const node = document.createElement('div'); node.className='summary-item';
+    node.innerHTML = `<h4>${escapeHtml(name)}</h4><p>${formatRupiah(total)}</p>`;
+    summaryGrid.appendChild(node);
+  });
+  const topPrin = Object.entries(byPrinsipal).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  topPrin.forEach(([name,total])=>{
+    const node = document.createElement('div'); node.className='summary-item';
+    node.innerHTML = `<h4>${escapeHtml(name)}</h4><p>${formatRupiah(total)}</p>`;
+    summaryGrid.appendChild(node);
+  });
+  if(!topSales.length && !topPrin.length) summaryGrid.innerHTML = '<div style="color:var(--muted)">Tidak ada ringkasan</div>';
+}
+
+/* ========= Charts (gradient + animation) ========= */
+function makeGradient(ctx, area, color1, color2){ const g = ctx.createLinearGradient(0,0,0,area.bottom || 220); g.addColorStop(0,color1); g.addColorStop(1,color2); return g; }
+
+function renderCharts(data){
+  const months = Array.from(new Set(data.map(d=>d.Bulan))).sort();
+  const principals = Array.from(new Set(data.map(d=>d.Prinsipal)));
+  const monthlyTotal = months.map(m=> data.filter(d=>d.Bulan===m).reduce((s,x)=>s+x.Penjualan,0) );
+
+  const ctx = document.getElementById('chartPenjualan').getContext('2d');
+  if(chart) chart.destroy();
+
+  const pDatasets = principals.map((p, idx)=>{
+    const points = months.map(m=> { const item = data.find(d=>d.Bulan===m && d.Prinsipal===p); return item?item.Penjualan:0; });
+    const baseColor = idx%2===0? 'rgba(0,123,255,0.95)' : 'rgba(0,86,214,0.95)';
+    return { type:'line', label:p, data:points, borderWidth:2, tension:0.28, pointRadius:3, fill:false, borderColor:baseColor, backgroundColor:baseColor, yAxisID:'y' };
+  });
+
+  const accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent1').trim() || '#007BFF';
+  const accent2 = getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim() || '#0056d6';
+  const barGradient = makeGradient(ctx, ctx.canvas.getBoundingClientRect(), hexToRgba(accent1,0.92), hexToRgba(accent2,0.55));
+
+  const datasets = [{ type:'bar', label:'Total Bulanan', data:monthlyTotal, backgroundColor:barGradient, borderRadius:6, yAxisID:'y' }, ...pDatasets];
+
+  chart = new Chart(ctx, {
+    data:{ labels: months, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{ duration:900, easing:'easeOutQuart' },
+      plugins:{ tooltip:{ callbacks:{ label:ctx=>formatRupiah(ctx.raw) }, mode:'nearest' }, legend:{ position:'top', labels:{ color:getComputedStyle(document.body).getPropertyValue('--text') } } },
+      scales:{ y:{ beginAtZero:true, ticks:{ color:getComputedStyle(document.body).getPropertyValue('--text') } }, x:{ ticks:{ color:getComputedStyle(document.body).getPropertyValue('--text') } } }
+    }
+  });
+
+  // Sales chart
+  const ctx2 = document.getElementById('chartSales').getContext('2d');
+  if(chartSales) chartSales.destroy();
+  const salesNames = Array.from(new Set(data.map(d=>d.Sales)));
+  const salesDatasets = salesNames.map((s, idx)=> {
+    const points = months.map(m=> { const item = data.find(d=>d.Bulan===m && d.Sales===s); return item?item.Penjualan:0; });
+    const c = idx%2===0?'rgba(245,158,11,0.95)':'rgba(16,185,129,0.95)';
+    return { label:s, data:points, borderColor:c, backgroundColor:c, fill:false, tension:0.25, pointRadius:3 };
+  });
+
+  chartSales = new Chart(ctx2, {
+    type:'line',
+    data:{ labels: months, datasets: salesDatasets },
+    options:{ responsive:true, maintainAspectRatio:false, animation:{ duration:900, easing:'easeInOutQuart' }, plugins:{ tooltip:{ callbacks:{ label:ctx=>formatRupiah(ctx.raw) } }, legend:{ position:'top', labels:{ color:getComputedStyle(document.body).getPropertyValue('--text') } } }, scales:{ y:{ beginAtZero:true, ticks:{ color:getComputedStyle(document.body).getPropertyValue('--text') } }, x:{ ticks:{ color:getComputedStyle(document.body).getPropertyValue('--text') } } } }
+  });
+}
+
+/* helper hex->rgba */
+function hexToRgba(hex, alpha=1){
+  try{
+    hex = hex.replace('#','').trim();
+    if(hex.length===3) hex = hex.split('').map(c=>c+c).join('');
+    const r = parseInt(hex.substring(0,2),16);
+    const g = parseInt(hex.substring(2,4),16);
+    const b = parseInt(hex.substring(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }catch(e){ return hex; }
+}
+
+/* ========= Filters & interaction ========= */
+function applyFilters(){
+  const bulan = filterBulan.value;
+  const prinsipal = filterPrinsipal.value;
+  const sales = filterSales.value;
+  const q = quickSearch.value.trim().toLowerCase();
+
+  filtered = dataAll.filter(d=>{
+    if(bulan && d.Bulan !== bulan) return false;
+    if(prinsipal && d.Prinsipal !== prinsipal) return false;
+    if(sales && d.Sales !== sales) return false;
+    if(q){
+      const hay = `${d.Sales} ${d.Prinsipal} ${d.Bulan}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  updateCards(filtered);
+  renderTable(filtered);
+  renderSummary(filtered);
+  renderCharts(filtered);
+  window.filteredData = filtered;
+}
+
+/* ========= Export Excel ========= */
+exportExcelBtn.addEventListener('click', ()=>{
+  const exportData = (window.filteredData && window.filteredData.length) ? window.filteredData : dataAll;
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+  XLSX.writeFile(workbook, `Data_Penjualan_${(new Date()).toISOString().slice(0,10)}.xlsx`);
+});
+
+/* ========= Export PDF ========= */
+exportPdfBtn.addEventListener('click', async ()=>{
+  try{
+    exportPdfBtn.textContent = 'Mengekspor...'; exportPdfBtn.disabled = true;
+    const headerEl = document.querySelector('header.app-header');
+    const capture = document.getElementById('captureArea');
+    const clone = capture.cloneNode(true);
+    clone.style.width = getComputedStyle(capture).width;
+    clone.style.background = getComputedStyle(document.body).background;
+    const wrapper = document.createElement('div');
+    wrapper.style.padding = '18px';
+    wrapper.style.background = getComputedStyle(document.body).background;
+    wrapper.appendChild(headerEl.cloneNode(true));
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+    const canvas = await html2canvas(wrapper, { scale: 2, backgroundColor: null, useCORS: true, logging:false });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p','pt','a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgProps = pdf.getImageProperties(imgData);
+    const imgWidth = pageWidth - 40;
+    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+    pdf.addImage(imgData, 'JPEG', 20, 20, imgWidth, imgHeight);
+    pdf.save(`Dashboard_Penjualan_${(new Date()).toISOString().slice(0,10)}.pdf`);
+    wrapper.remove();
+    exportPdfBtn.textContent = 'PDF'; exportPdfBtn.disabled = false;
+  }catch(err){
+    console.error(err);
+    exportPdfBtn.textContent = 'PDF';
+    exportPdfBtn.disabled = false;
+    alert('Gagal mengekspor PDF. Coba lagi atau gunakan browser lain.');
+  }
+});
+
+/* ========= Logo upload + localStorage ========= */
+logoWrapper.addEventListener('click', ()=> logoUploader.click());
+logoUploader.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> {
+    const base64 = reader.result;
+    try { localStorage.setItem('dashboardLogo', base64); } catch(err) { console.warn('localStorage mungkin penuh'); }
+    logoWrapper.innerHTML = `<img src="${base64}" alt="logo" />`;
+  };
+  reader.readAsDataURL(f);
+});
+function loadStoredLogo(){
+  try{
+    const saved = localStorage.getItem('dashboardLogo');
+    if(saved){
+      logoWrapper.innerHTML = `<img src="${saved}" alt="logo" />`;
+    }
+  }catch(e){ /* ignore */ }
+}
+
+/* ========= Palette ========= */
+openPalette.addEventListener('click', ()=> { palettePanel.style.display='block'; });
+closePalette.addEventListener('click', ()=> { palettePanel.style.display='none'; });
+
+document.querySelectorAll('.palette-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const p = btn.dataset.preset;
+    if(p==='default'){ accent1Picker.value='#007BFF'; accent2Picker.value='#0056d6'; }
+    if(p==='cerah'){ accent1Picker.value='#f97316'; accent2Picker.value='#ef4444'; }
+    if(p==='green'){ accent1Picker.value='#10b981'; accent2Picker.value='#06b6d4'; }
+  });
+});
+
+applyCustom.addEventListener('click', ()=>{
+  const a1 = accent1Picker.value;
+  const a2 = accent2Picker.value;
+  document.documentElement.style.setProperty('--accent1', a1);
+  document.documentElement.style.setProperty('--accent2', a2);
+  palettePanel.style.display='none';
+  renderCharts(filtered.length?filtered:dataAll);
+});
+
+/* ========= Misc events ========= */
+filterBulan.addEventListener('change', applyFilters);
+filterPrinsipal.addEventListener('change', applyFilters);
+filterSales.addEventListener('change', applyFilters);
+
+quickSearch.addEventListener('input', debounce(applyFilters, 250));
+clearSearch.addEventListener('click', ()=>{ quickSearch.value=''; applyFilters(); });
+refreshBtn.addEventListener('click', loadData);
+toggleSummaryBtn.addEventListener('click', ()=>{ const p = summaryGrid.parentElement; p.style.display = (p.style.display === 'none') ? '' : 'none'; });
+
+/* ========= Tombol Back (fungsi) ========= */
+const backBtn = document.getElementById('backButton');
+if(backBtn){
+  backBtn.addEventListener('click', () => {
+    // jika ada history, kembali; jika tidak, fallback ke beranda (index.html) — kamu bisa ubah fallback ini
+    if(window.history.length > 1){
+      window.history.back();
+    } else {
+      // fallback: ganti ke index.html (hapus / ubah jika tidak diinginkan)
+      window.location.href = 'index.html';
+    }
+  });
+}
+
+/* ========= Header date ========= */
+function updateHeaderDate(){
+  const el = document.getElementById('smallDate');
+  const d = new Date();
+  const options = { weekday:'short', year:'numeric', month:'short', day:'numeric' };
+  el.textContent = d.toLocaleDateString('id-ID', options);
+}
+
+/* ========= Init ========= */
+loadData();
+</script>
+</body>
+</html>

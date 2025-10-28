@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbx2B4jwKqOrd4cdYo2ycY4VAj1_-WDW_lY5z-pXr3E/dev">
+  <title>Mengalihkan...</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      height: 100vh;
+      background: #f9f9f9;
+      margin: 0;
+    }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 6px solid #ccc;
+      border-top-color: #4285f4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    p {
+      color: #555;
+      font-size: 16px;
+    }
+  </style>
+  <script>
+    // Cadangan jika meta refresh gagal
+    window.onload = function() {
+      setTimeout(function() {
+        window.location.href = "https://script.google.com/macros/s/AKfycbx2B4jwKqOrd4cdYo2ycY4VAj1_-WDW_lY5z-pXr3E/dev";
+      }, 200); // 0.2 detik
+    };
+  </script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <p>Mohon Tunggu...</p>
+</body>
+</html>
+
