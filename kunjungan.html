@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login & Kunjungan Sales</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    color: #222;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 16px rgb(0 0 0 / 0.25);
+    max-width: 400px;
+    width: 100%;
+    padding: 24px 20px;
+  }
+  h2 {
+    margin: 0 0 20px;
+    font-weight: 700;
+    color: #4e54c8;
+    text-align: center;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 16px;
+    border: 1.5px solid #ccc;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: #4e54c8;
+    outline: none;
+  }
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+  button {
+    width: 100%;
+    background-color: #4e54c8;
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.25s ease-in-out;
+  }
+  button:disabled {
+    background-color: #a3a3f7;
+    cursor: not-allowed;
+  }
+  button:hover:not(:disabled) {
+    background-color: #3b3f9a;
+  }
+  .message {
+    font-weight: 600;
+    margin-top: 8px;
+    text-align: center;
+  }
+  .error {
+    color: #b71c1c;
+  }
+  .success {
+    color: #1b5e20;
+  }
+  #formKunjungan {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+  <div class="card" id="loginCard">
+    <h2>Login Sales</h2>
+    <input type="text" id="user" placeholder="Username" autocomplete="username" required />
+    <input type="password" id="pass" placeholder="Password" autocomplete="current-password" required />
+    <button id="btnLogin" onclick="login()">Login</button>
+    <div id="loginMsg" class="message"></div>
+  </div>
+
+  <div class="card" id="formKunjungan">
+    <h2>Form Kunjungan</h2>
+    <p style="font-weight:600; margin-bottom:16px; color:#4e54c8;">
+      Selamat Datang: <span id="namaSales"></span>
+    </p>
+    <input type="text" id="toko" placeholder="Nama Toko" readonly />
+    <input type="text" id="tanggal" readonly />
+    <input type="text" id="waktu" readonly />
+    <textarea id="catatan" placeholder="Catatan Kunjungan"></textarea>
+    <button id="btnSubmit" onclick="submitForm()">Submit</button>
+    <div id="formMsg" class="message"></div>
+  </div>
+
+<script>
+  const baseUrl = "https://script.google.com/macros/s/AKfycbw3mC_eTwXCQ7SNjxp6OiBVj9FdqKPWG1cqvQf3y_Ska7D-qZ6xIIAHDl7jQyfFaZvjIg/exec";
+
+  let salesId = "";
+  let usernameLogin = "";
+  let tokoData = [];
+
+  function login() {
+    const userInput = document.getElementById("user");
+    const passInput = document.getElementById("pass");
+    const btnLogin = document.getElementById("btnLogin");
+    const loginMsg = document.getElementById("loginMsg");
+
+    const username = userInput.value.trim();
+    const password = passInput.value.trim();
+
+    if (!username || !password) {
+      loginMsg.textContent = "Username dan password wajib diisi.";
+      loginMsg.className = "message error";
+      return;
+    }
+
+    btnLogin.disabled = true;
+    loginMsg.textContent = "Memproses login...";
+    loginMsg.className = "message";
+
+    const url = `${baseUrl}?mode=login&user=${encodeURIComponent(username)}&pass=${encodeURIComponent(password)}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          salesId = data.nama || "";
+          usernameLogin = username;
+          document.getElementById("namaSales").textContent = salesId || usernameLogin;
+          loginMsg.textContent = "";
+          document.getElementById("loginCard").style.display = "none";
+          document.getElementById("formKunjungan").style.display = "block";
+          getLocationAndMatch();
+        } else {
+          loginMsg.textContent = data.message || "Login gagal.";
+          loginMsg.className = "message error";
+        }
+      })
+      .catch(() => {
+        loginMsg.textContent = "Terjadi kesalahan jaringan.";
+        loginMsg.className = "message error";
+      })
+      .finally(() => {
+        btnLogin.disabled = false;
+      });
+  }
+
+  function getLocationAndMatch() {
+    const formMsg = document.getElementById("formMsg");
+    const tokoInput = document.getElementById("toko");
+    const tanggalInput = document.getElementById("tanggal");
+    const waktuInput = document.getElementById("waktu");
+    const btnSubmit = document.getElementById("btnSubmit");
+
+    formMsg.textContent = "Mendeteksi lokasi Anda...";
+    formMsg.className = "message";
+
+    if (!navigator.geolocation) {
+      formMsg.textContent = "Geolocation tidak didukung oleh browser ini.";
+      formMsg.className = "message error";
+      btnSubmit.disabled = true;
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        fetch(baseUrl + "?mode=tokodata")
+          .then(res => res.json())
+          .then(data => {
+            tokoData = data;
+
+            const RADIUS_KM = 0.05;
+            let tokoTerdekat = null;
+
+            for (const toko of tokoData) {
+              const tLat = parseFloat(toko['Latitude']);
+              const tLng = parseFloat(toko['Longitude']);
+              if (isNaN(tLat) || isNaN(tLng)) continue;
+              const dist = getDistance(lat, lng, tLat, tLng);
+              if (dist <= RADIUS_KM) {
+                tokoTerdekat = toko;
+                break;
+              }
+            }
+
+            if (!tokoTerdekat) {
+              formMsg.textContent = "Anda tidak berada di dekat titik toko manapun. Data kunjungan tidak dapat diisi.";
+              formMsg.className = "message error";
+              btnSubmit.disabled = true;
+              tokoInput.value = "";
+              return;
+            }
+
+            tokoInput.value = tokoTerdekat['Nama Toko'] || tokoTerdekat['Nama'] || "Toko Tidak Diketahui";
+            btnSubmit.disabled = false;
+            formMsg.textContent = "";
+
+            const now = new Date();
+            tanggalInput.value = now.toISOString().slice(0, 10);
+            waktuInput.value = now.toTimeString().slice(0, 5);
+          })
+          .catch(() => {
+            formMsg.textContent = "Gagal mengambil data toko.";
+            formMsg.className = "message error";
+            btnSubmit.disabled = true;
+          });
+      },
+      error => {
+        formMsg.textContent = "Gagal mendapatkan lokasi: " + error.message;
+        formMsg.className = "message error";
+        btnSubmit.disabled = true;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+  function toRad(Value) {
+    return (Value * Math.PI) / 180;
+  }
+
+  function submitForm() {
+    const btnSubmit = document.getElementById("btnSubmit");
+    const formMsg = document.getElementById("formMsg");
+    const tokoInput = document.getElementById("toko");
+    const tanggalInput = document.getElementById("tanggal");
+    const waktuInput = document.getElementById("waktu");
+    const catatanInput = document.getElementById("catatan");
+
+    if (!tokoInput.value) {
+      formMsg.textContent = "Nama toko tidak ditemukan. Tidak dapat menyimpan data.";
+      formMsg.className = "message error";
+      return;
+    }
+
+    btnSubmit.disabled = true;
+    formMsg.textContent = "Menyimpan data...";
+    formMsg.className = "message";
+
+    const params = new URLSearchParams({
+      mode: "kunjungan",
+      tanggal: tanggalInput.value,
+      waktu: waktuInput.value,
+      salesid: salesId || usernameLogin,
+      toko: tokoInput.value,
+      catatan: catatanInput.value,
+    });
+
+    fetch(baseUrl + "?" + params.toString())
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "success") {
+          formMsg.textContent = "Data kunjungan berhasil disimpan.";
+          formMsg.className = "message success";
+          catatanInput.value = "";
+        } else {
+          formMsg.textContent = data.message || "Gagal menyimpan data.";
+          formMsg.className = "message error";
+        }
+      })
+      .catch(() => {
+        formMsg.textContent = "Terjadi kesalahan jaringan saat menyimpan.";
+        formMsg.className = "message error";
+      })
+      .finally(() => {
+        btnSubmit.disabled = false;
+      });
+  }
+</script>
+
+</body>
+</html>
+

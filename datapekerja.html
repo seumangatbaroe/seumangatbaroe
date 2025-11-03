@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Data Karyawan</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .card-header {
+      border-top-left-radius: 15px;
+      border-top-right-radius: 15px;
+      font-weight: bold;
+      font-size: 1.25rem;
+      color: black; /* Teks judul menjadi hitam */
+    }
+
+    input:focus {
+      border-color: #2575fc;
+      box-shadow: 0 0 8px rgba(37, 117, 252, 0.5);
+    }
+
+    button.btn-primary {
+      width: 100%;
+      font-weight: bold;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+    }
+
+    button.btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Toast position */
+    #toastContainer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card shadow">
+    <div class="card-header bg-gradient" style="background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);">
+      Form Data Karyawan
+    </div>
+    <div class="card-body">
+      <form id="karyawanForm">
+        <div class="mb-3">
+          <label for="nama" class="form-label">Nama</label>
+          <input type="text" class="form-control" id="nama" name="nama" placeholder="Masukkan nama lengkap" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="nik" class="form-label">NIK</label>
+          <input type="text" class="form-control" id="nik" name="nik" placeholder="Masukkan NIK" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="alamat" class="form-label">Alamat</label>
+          <input type="text" class="form-control" id="alamat" name="alamat" placeholder="Masukkan alamat" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="hp" class="form-label">Hp</label>
+          <input type="text" class="form-control" id="hp" name="hp" placeholder="Masukkan nomor HP" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" name="email" placeholder="Masukkan email" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Kirim</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const form = document.getElementById('karyawanForm');
+    const scriptURL = "https://script.google.com/macros/s/AKfycbw3u19HFQ40n13XpxCuJSA2CxPMhElUbXxpR-WGxZ4OydDAU8u3SA6vndo3x6QnzX6W/exec";
+
+    function showToast(message, type = 'success') {
+      const toastContainer = document.getElementById('toastContainer');
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+      toastEl.role = "alert";
+      toastEl.ariaLive = "assertive";
+      toastEl.ariaAtomic = "true";
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">${message}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+      toastContainer.appendChild(toastEl);
+      const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+      bsToast.show();
+      toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+        .then(response => {
+          form.reset();
+          showToast('Data berhasil dikirim!', 'success');
+        })
+        .catch(error => showToast('Terjadi kesalahan: ' + error, 'danger'));
+    });
+  </script>
+</body>
+</html>
